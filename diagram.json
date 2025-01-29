@@ -168,7 +168,7 @@
     [ "btn2:1.l", "btn1:2.l", "black", [ "h0" ] ],
     [ "led1:C", "pico:GND.5", "black", [ "v76.8", "h326.8", "v-9.6" ] ],
     [ "led1:A", "r1:1", "red", [ "v0" ] ],
-    [ "r1:2", "pico:GP11", "red", [ "v0", "h85.2", "v-86.4" ] ]
+    [ "r1:2", "pico:GP13", "red", [ "h66", "v-67.24" ] ]
   ],
   "dependencies": {}
 }

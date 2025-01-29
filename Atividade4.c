@@ -103,7 +103,7 @@ uint sm;
 void gpio_irq_handler(uint gpio, uint32_t events)
 {
     uint32_t current_time = to_us_since_boot(get_absolute_time());
-    if (current_time - last_time > 200000) // 150 ms para evitar pulos
+    if (current_time - last_time > 250000) // 150 ms para evitar pulos
     {
         if (gpio == BUTTON_A && a < 9) {
             a++;
