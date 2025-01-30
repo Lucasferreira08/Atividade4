@@ -1,157 +1,105 @@
-// #include <stdio.h>
-// #include "pico/stdlib.h"
-// #include "images_numbers/numbers.h"
-
-// #define OUT_PIN 7
-// #define BUTTON_A 5 // Botão A = 5, Botão B = 6 , BotãoJoy = 22
-// #define BUTTON_B 6 // Botão A = 5, Botão B = 6 , BotãoJoy = 22
-
-// static volatile uint32_t last_time = 0; 
-// static volatile uint a = 0;
-// PIO pio; 
-// uint sm;
-
-// // Função de interrupção com debouncing
-// void gpio_irq_handler(uint gpio, uint32_t events)
-// {
-//     // Obtém o tempo atual em microssegundos
-//     uint32_t current_time = to_us_since_boot(get_absolute_time());
-
-//     // Verifica se passou tempo suficiente desde o último evento
-//     if (current_time - last_time > 50000) // 50 ms de debouncing
-//     {
-//         if (gpio == BUTTON_A && a != 9) {
-//             printf("A = %d\n", ++a);
-//         } else if (gpio == BUTTON_B && a != 0) {
-//             printf("A = %d\n", --a);
-//         }
-
-//         last_time = current_time; // Atualiza o tempo do último evento
-//         main_animacao(a, pio, sm);
-//     }
-// }
-
-// void pinos_config() 
-// {
-//     stdio_init_all();
-
-//     gpio_init(BUTTON_A);
-//     gpio_set_dir(BUTTON_A, GPIO_IN); // Configura o pino como entrada
-//     gpio_pull_up(BUTTON_A);          // Habilita o pull-up interno
-
-//     gpio_init(BUTTON_B);
-//     gpio_set_dir(BUTTON_B, GPIO_IN); // Configura o pino como entrada
-//     gpio_pull_up(BUTTON_B);          // Habilita o pull-up interno
-
-//     // Configuração da interrupção com callback
-//     gpio_set_irq_enabled(BUTTON_A, GPIO_IRQ_EDGE_FALL, true);
-//     gpio_set_irq_enabled(BUTTON_B, GPIO_IRQ_EDGE_FALL, true);
-//     gpio_set_irq_callback(&gpio_irq_handler);
-//     irq_set_enabled(IO_IRQ_BANK0, true);
-// }
-
-// uint pio_config(PIO pio) 
-// {
-//     bool ok;
-
-//     //coloca a frequência de clock para 128 MHz, facilitando a divisão pelo clock
-//     ok = set_sys_clock_khz(128000, false);
-
-//     printf("iniciando a transmissão PIO");
-//     if (ok) printf("clock set to %ld\n", clock_get_hz(clk_sys));
-
-//     //configurações da PIO
-//     uint offset = pio_add_program(pio, &pio_matrix_program);
-//     uint sm = pio_claim_unused_sm(pio, true);
-//     pio_matrix_program_init(pio, sm, offset, OUT_PIN);
-
-//     return sm;
-// }
-
-// int main()
-// {
-//     pio = pio0; 
-//     pinos_config();
-//     sm = pio_config(pio);
-
-//     main_animacao(a, pio, sm);
-
-//     while (true) 
-//     {
-//     }
-// }
-
-//------------------------------------------------------------------
-
-/* Primeiro Código - Configuração dos Botões e PIO */
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "images_numbers/numbers.h"
 
+// Define os pinos de saída para o LED e o LED vermelho
 #define OUT_PIN 7
 #define OUT_PIN_RED 13
 
+// Define os pinos dos botões A e B
 #define BUTTON_A 5
 #define BUTTON_B 6
 
-static volatile uint32_t last_time = 0; 
-static volatile uint a = 0;
+// Variáveis globais para controle de tempo e estado
+static volatile uint32_t last_time = 0; // Armazena o último tempo de interrupção
+static volatile uint a = 0; // Variável de estado que será incrementada/decrementada pelos botões
+
+// Variáveis para o PIO (Programmable I/O) e state machine (máquina de estados)
 PIO pio;
 uint sm;
 
 // Função de interrupção com debouncing aprimorado
 void gpio_irq_handler(uint gpio, uint32_t events)
 {
-    uint32_t current_time = to_us_since_boot(get_absolute_time());
-    if (current_time - last_time > 250000) // 150 ms para evitar pulos
+    uint32_t current_time = to_us_since_boot(get_absolute_time()); // Obtém o tempo atual em microssegundos
+
+    // Verifica se passaram pelo menos 250ms desde a última interrupção (debouncing)
+    if (current_time - last_time > 250000) // 250 ms para evitar pulos
     {
+        // Se o botão A foi pressionado e 'a' é menor que 9, incrementa 'a'
         if (gpio == BUTTON_A && a < 9) {
             a++;
-        } else if (gpio == BUTTON_B && a > 0) {
+        } 
+        // Se o botão B foi pressionado e 'a' é maior que 0, decrementa 'a'
+        else if (gpio == BUTTON_B && a > 0) {
             a--;
         }
+
+        // Exibe o valor atual de 'a' no console
         printf("A = %d\n", a);
+
+        // Atualiza o último tempo de interrupção
         last_time = current_time;
+
+        // Chama a função de animação principal com o valor atual de 'a'
         main_animacao(a, pio, sm);
     }
 }
 
+// Função para configurar os pinos
 void pinos_config() 
 {
-    stdio_init_all();
+    stdio_init_all(); // Inicializa a comunicação serial (para printf)
 
+    // Configura o pino do botão A como entrada com pull-up
     gpio_init(BUTTON_A);
     gpio_set_dir(BUTTON_A, GPIO_IN);
     gpio_pull_up(BUTTON_A);
 
+    // Configura o pino do botão B como entrada com pull-up
     gpio_init(BUTTON_B);
     gpio_set_dir(BUTTON_B, GPIO_IN);
     gpio_pull_up(BUTTON_B);
 
+    // Configura o pino do LED vermelho como saída
     gpio_init(OUT_PIN_RED);
     gpio_set_dir(OUT_PIN_RED, GPIO_OUT);
 
+    // Habilita a interrupção para os botões A e B na borda de descida (quando o botão é pressionado)
     gpio_set_irq_enabled_with_callback(BUTTON_A, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     gpio_set_irq_enabled_with_callback(BUTTON_B, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 }
 
+// Função para configurar o PIO (Programmable I/O)
 uint pio_config(PIO pio) 
 {
-    set_sys_clock_khz(128000, false);
+    set_sys_clock_khz(128000, false); // Configura o clock do sistema para 128 MHz
+
+    // Adiciona o programa PIO para controle da matriz de LEDs
     uint offset = pio_add_program(pio, &pio_matrix_program);
+
+    // Obtém uma state machine (máquina de estados) não utilizada
     uint sm = pio_claim_unused_sm(pio, true);
+
+    // Inicializa o programa PIO na state machine com o pino de saída definido
     pio_matrix_program_init(pio, sm, offset, OUT_PIN);
-    return sm;
+
+    return sm; // Retorna a state machine configurada
 }
 
+// Função principal
 int main()
 {
-    pio = pio0; 
+    pio = pio0; // Usa o PIO0 para controle da matriz de LEDs
+
+    // Configura os pinos e o PIO
     pinos_config();
     sm = pio_config(pio);
 
+    // Inicia a animação principal com o valor inicial de 'a'
     main_animacao(a, pio, sm);
 
+    // Loop infinito para piscar o LED vermelho
     while (true) 
     {
         // Liga o LED vermelho
